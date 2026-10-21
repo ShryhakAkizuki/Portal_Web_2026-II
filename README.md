@@ -39,6 +39,10 @@ No hay soporte para navegadores móviles.
 
 ## Documentación
 
+- [Plan del proyecto y arquitectura](docs/plan-mvp.md): stack, arquitectura en capas,
+  sistema de portales, definición del MVP y plan de tareas por fases con criterios de
+  aceptación.
+
 ## Licencia
 
 [AGPL-3.0](LICENSE)
