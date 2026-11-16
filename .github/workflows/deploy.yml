@@ -1,17 +1,15 @@
-name: Desplegar a GitHub Pages
+name: Despliegue a GitHub Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# Permisos requeridos por actions/deploy-pages (OIDC).
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Evita múltiples despliegues simultáneos.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -20,26 +18,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-
-      - name: Instalar dependencias
-        run: npm ci
-
-      - name: Compilar (vite build)
-        run: npm run build
-
-      - name: Configurar Pages
-        uses: actions/configure-pages@v5
-
-      - name: Subir artefacto de Pages
-        uses: actions/upload-pages-artifact@v3
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
@@ -50,6 +39,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Desplegar en GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
