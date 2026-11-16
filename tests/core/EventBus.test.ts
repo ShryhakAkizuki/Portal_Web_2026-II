@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { EventBus } from './EventBus';
+import { EventBus } from '../../src/core/EventBus';
 
 describe('EventBus', () => {
   afterEach(() => {

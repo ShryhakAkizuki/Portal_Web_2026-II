@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { toV3, fromV3, toQuat, fromQuat } from './vec';
-import type { Vec3, Quat } from '../types/contracts';
+import { toV3, fromV3, toQuat, fromQuat } from '../../src/math/vec';
+import type { Vec3, Quat } from '../../src/types/contracts';
 
 describe('math/vec', () => {
   it('fromV3(toV3(v)) devuelve v', () => {

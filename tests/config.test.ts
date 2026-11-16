@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLAYER, GROUPS, interactionGroups } from './config';
+import { PLAYER, GROUPS, interactionGroups } from '../src/config';
 
 describe('config', () => {
   it('interactionGroups(PLAYER, WORLD|PROP) da el grupo esperado de Rapier, sin signo', () => {
