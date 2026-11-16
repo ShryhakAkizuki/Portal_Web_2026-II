@@ -19,6 +19,19 @@ npm test           # corre las pruebas (vitest run)
 
 Para compilar con la base de GitHub Pages: `BASE_PATH=/<repositorio>/ npm run build`.
 
+## Despliegue
+
+El sitio se publica automáticamente en **GitHub Pages** mediante el workflow
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), que se
+dispara en `push` a `main` y manualmente (pestaña *Actions* → *Run
+workflow*). El build usa `BASE_PATH=/<repositorio>/` de forma automática.
+
+Configuración manual (una sola vez, desde el panel de GitHub):
+
+1. **Settings → Pages → Source** → elegir **GitHub Actions**.
+2. Esperar a que el primer despliegue termine.
+3. La URL pública es `https://<usuario>.github.io/<repositorio>/`.
+
 ## Política de assets
 
 Repositorio público: solo se usan assets **propios o CC0**. Ningún material de
