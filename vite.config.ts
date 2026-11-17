@@ -5,7 +5,7 @@ const config = {
   base: process.env.BASE_PATH ?? '/',
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
   },
 } as UserConfig & { test: Record<string, unknown> };
 
