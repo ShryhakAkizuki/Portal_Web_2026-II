@@ -19,7 +19,7 @@ export abstract class BaseEntity implements EntityContract {
   body?: PhysicsBody;
   mesh?: Object3D;
 
-  private readonly prevPosition = new Vector3();
+  protected readonly prevPosition = new Vector3();
   private readonly prevRotation = new Quaternion();
   private readonly tmpPosition = new Vector3();
   private readonly tmpRotation = new Quaternion();

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Scene } from 'three';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { PhysicsWorld } from '../../src/systems/PhysicsWorld';
+import { PLAYER } from '../../src/config';
 import { Player } from '../../src/gameplay/Player';
 import type { Action, IInput, IRenderer, Vec3 } from '../../src/types/contracts';
 
@@ -9,6 +10,7 @@ const STEP = 1 / 60;
 class FakeInput implements IInput {
   down: Action[] = [];
   pressed: Action[] = [];
+  lookDelta: { dx: number; dy: number } | null = null;
 
   isDown(a: Action): boolean {
     return this.down.includes(a);
@@ -31,7 +33,9 @@ class FakeInput implements IInput {
     return { x, y };
   }
   consumeLook(): { dx: number; dy: number } {
-    return { dx: 0, dy: 0 };
+    const l = this.lookDelta ?? { dx: 0, dy: 0 };
+    this.lookDelta = null;
+    return l;
   }
   readonly isLocked = false;
   lockPointer(): void {
@@ -42,13 +46,15 @@ class FakeInput implements IInput {
   dispose(): void {
     this.down = [];
     this.pressed = [];
+    this.lookDelta = null;
   }
 }
 
-describe('Player (T12)', () => {
+describe('Player (T12–T13)', () => {
   let pw: PhysicsWorld;
   let input: FakeInput;
   let deps: ConstructorParameters<typeof Player>[0];
+  let camera: PerspectiveCamera;
 
   function step(p: Player): void {
     p.captureState();
@@ -69,7 +75,12 @@ describe('Player (T12)', () => {
   beforeEach(async () => {
     pw = await PhysicsWorld.create();
     input = new FakeInput();
-    deps = { physics: pw, renderer: { scene: new Scene() } as unknown as IRenderer, input };
+    camera = new PerspectiveCamera();
+    deps = {
+      physics: pw,
+      renderer: { scene: new Scene(), camera } as unknown as IRenderer,
+      input,
+    };
   });
 
   it('cae desde 2 m y se detiene con centro y ≈ 0.9, grounded = true', () => {
@@ -205,11 +216,90 @@ describe('Player (T12)', () => {
     expect(eye).toEqual([pos[0], pos[1] + 0.7, pos[2]]);
   });
 
-  it('look y lookDirection lanzan Error("T13")', () => {
-    floor();
+  it('look(100, 0) reduce yaw en 100*sens; look(0, ±1e6) satura pitch', () => {
     const p = new Player(deps, [0, 0, 0]);
-    expect(() => p.look(1, 0)).toThrow('T13');
-    expect(() => p.lookDirection()).toThrow('T13');
+    p.look(100, 0);
+    expect(p.yaw).toBeCloseTo(-100 * PLAYER.lookSensitivity, 10);
+    expect(p.pitch).toBeCloseTo(0, 10);
+
+    p.look(0, 1e6);
+    expect(p.pitch).toBeCloseTo(-PLAYER.maxPitch, 10);
+    p.look(0, -1e6);
+    expect(p.pitch).toBeCloseTo(PLAYER.maxPitch, 10);
+  });
+
+  it('lookDirection: reposo (0,0,−1); yaw=π/2 → (−1,0,0); pitch=π/4 → y≈0.707', () => {
+    const p = new Player(deps, [0, 0, 0]);
+    let d = p.lookDirection();
+    expect(d[0]).toBeCloseTo(0, 10);
+    expect(d[1]).toBeCloseTo(0, 10);
+    expect(d[2]).toBeCloseTo(-1, 10);
+
+    p.yaw = Math.PI / 2;
+    d = p.lookDirection();
+    expect(d[0]).toBeCloseTo(-1, 10);
+    expect(d[1]).toBeCloseTo(0, 10);
+    expect(d[2]).toBeCloseTo(0, 10);
+
+    p.yaw = 0;
+    p.pitch = Math.PI / 4;
+    d = p.lookDirection();
+    expect(d[1]).toBeCloseTo(Math.SQRT1_2, 10);
+    expect(Math.hypot(d[0], d[1], d[2])).toBeCloseTo(1, 10);
+  });
+
+  it('syncMesh(1): cámara en centro + (0,0.7,0) y getWorldDirection ≈ lookDirection', () => {
+    const p = new Player(deps, [0, 0, 0]);
+    p.captureState();
+    p.preStep(STEP);
+    pw.step(STEP);
+    p.captureState();
+    p.preStep(STEP);
+    pw.step(STEP);
+    p.syncMesh(1);
+
+    const pos = pw.getPose(p.body!).position;
+    expect(camera.position.x).toBeCloseTo(pos[0], 10);
+    expect(camera.position.y).toBeCloseTo(pos[1] + 0.7, 10);
+    expect(camera.position.z).toBeCloseTo(pos[2], 10);
+    expect(camera.rotation.order).toBe('YXZ');
+
+    const dir = new Vector3();
+    camera.getWorldDirection(dir);
+    const look = p.lookDirection();
+    expect(dir.x).toBeCloseTo(look[0], 8);
+    expect(dir.y).toBeCloseTo(look[1], 8);
+    expect(dir.z).toBeCloseTo(look[2], 8);
+  });
+
+  it('syncMesh(0.5) interpola la cámara entre la pose previa y la actual', () => {
+    const p = new Player(deps, [0, 0, 0]);
+    input.down.push('forward');
+    p.captureState();
+    p.preStep(STEP);
+    pw.step(STEP);
+    const prev = pw.getPose(p.body!).position;
+    p.captureState();
+    p.preStep(STEP);
+    pw.step(STEP);
+    const curr = pw.getPose(p.body!).position;
+    p.syncMesh(0.5);
+
+    expect(camera.position.x).toBeCloseTo((prev[0] + curr[0]) / 2, 10);
+    expect(camera.position.y).toBeCloseTo((prev[1] + curr[1]) / 2 + 0.7, 10);
+    expect(camera.position.z).toBeCloseTo((prev[2] + curr[2]) / 2, 10);
+  });
+
+  it('syncMesh consume la mirada de input una sola vez', () => {
+    const p = new Player(deps, [0, 0, 0]);
+    input.lookDelta = { dx: 10, dy: 0 };
+    p.captureState();
+    p.preStep(STEP);
+    pw.step(STEP);
+    p.syncMesh(1);
+    expect(p.yaw).toBeCloseTo(-10 * PLAYER.lookSensitivity, 10);
+    p.syncMesh(1);
+    expect(p.yaw).toBeCloseTo(-10 * PLAYER.lookSensitivity, 10);
   });
 
   it('id, kind, canCross y userData del cuerpo', () => {

@@ -1,6 +1,10 @@
 import { PLAYER } from '../config';
+import { Vector3 } from 'three';
 import { BaseEntity, type EntityDeps } from './Entity';
 import type { IInput, IPlayer, Vec3 } from '../types/contracts';
+
+const clamp = (v: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, v));
 
 export interface PlayerDeps extends EntityDeps {
   input: IInput;
@@ -15,6 +19,7 @@ export class Player extends BaseEntity implements IPlayer {
   grounded = false;
 
   private readonly input: IInput;
+  private readonly tmpCurrent = new Vector3();
 
   constructor(deps: PlayerDeps, feetPosition: Vec3, yaw = 0) {
     super('player', 'player', deps);
@@ -70,11 +75,42 @@ export class Player extends BaseEntity implements IPlayer {
     return [p[0], p[1] + PLAYER.eyeOffset, p[2]];
   }
 
-  look(_dx: number, _dy: number): void {
-    throw new Error('T13');
+  look(dx: number, dy: number): void {
+    this.yaw -= dx * PLAYER.lookSensitivity;
+    this.pitch = clamp(
+      this.pitch - dy * PLAYER.lookSensitivity,
+      -PLAYER.maxPitch,
+      PLAYER.maxPitch,
+    );
   }
 
   lookDirection(): Vec3 {
-    throw new Error('T13');
+    const cp = Math.cos(this.pitch);
+    return [
+      -Math.sin(this.yaw) * cp,
+      Math.sin(this.pitch),
+      -Math.cos(this.yaw) * cp,
+    ];
+  }
+
+  override syncMesh(alpha: number): void {
+    const look = this.input.consumeLook();
+    this.look(look.dx, look.dy);
+    if (!this.body) {
+      return;
+    }
+    const pose = this.deps.physics.getPose(this.body);
+    const curr = this.tmpCurrent.set(
+      pose.position[0],
+      pose.position[1],
+      pose.position[2],
+    );
+    this.deps.renderer.camera.position.lerpVectors(
+      this.prevPosition,
+      curr,
+      alpha,
+    );
+    this.deps.renderer.camera.position.y += PLAYER.eyeOffset;
+    this.deps.renderer.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
   }
 }
