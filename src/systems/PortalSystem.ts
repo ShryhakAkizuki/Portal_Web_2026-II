@@ -1,4 +1,5 @@
 import { PORTAL_WIDTH, PORTAL_HEIGHT, PORTAL_OFFSET } from '../config';
+import { PortalVisual } from './PortalVisual';
 import { axisOfNormal, snapUp, fitPortalOnFace, rectsOverlap, portalRect } from '../math/faceMath';
 import type { Axis } from '../math/faceMath';
 import type {
@@ -17,6 +18,7 @@ import type { PerspectiveCamera } from 'three';
 export interface PortalSystemDeps {
   physics: IPhysicsWorld;
   bus: IEventBus;
+  renderer: IRenderer;
 }
 
 type NormalAxis = { axis: Axis; sign: 1 | -1 };
@@ -35,11 +37,13 @@ function cross(a: Vec3, b: Vec3): Vec3 {
 export class PortalSystem implements IPortalSystem {
   private readonly physics: IPhysicsWorld;
   private readonly bus: IEventBus;
+  private readonly visual: PortalVisual;
   private readonly portals = new Map<PortalColor, PortalState>();
 
   constructor(deps: PortalSystemDeps) {
     this.physics = deps.physics;
     this.bus = deps.bus;
+    this.visual = new PortalVisual(deps.renderer.scene);
   }
 
   place(color: PortalColor, hit: RayHit, viewDir: Vec3): boolean {
@@ -67,12 +71,14 @@ export class PortalSystem implements IPortalSystem {
       surfaceId: hit.userData.surfaceId,
     };
     this.portals.set(color, state);
+    this.visual.show(state);
     this.bus.emit('portal:placed', { color });
     return true;
   }
 
   remove(color: PortalColor): void {
     this.portals.delete(color);
+    this.visual.hide(color);
   }
 
   get(color: PortalColor): PortalState | null {
@@ -96,6 +102,7 @@ export class PortalSystem implements IPortalSystem {
   }
 
   dispose(): void {
+    this.visual.dispose();
     this.portals.clear();
   }
 

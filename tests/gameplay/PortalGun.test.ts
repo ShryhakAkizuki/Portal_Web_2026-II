@@ -18,7 +18,21 @@ import type {
   RayHit,
   Vec3,
 } from '../../src/types/contracts';
-import type { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, Scene } from 'three';
+import type { WebGLRenderTarget, WebGLRenderer } from 'three';
+
+class FakeRenderer implements IRenderer {
+  readonly scene = new Scene();
+  readonly camera = new PerspectiveCamera(75, 1, 0.05, 200);
+
+  get gl(): WebGLRenderer {
+    throw new Error('gl no disponible en tests');
+  }
+  resize(_width: number, _height: number): void {}
+  render(): void {}
+  renderTo(_target: WebGLRenderTarget, _camera: PerspectiveCamera): void {}
+  dispose(): void {}
+}
 
 class FakeInput implements IInput {
   locked = false;
@@ -105,7 +119,7 @@ describe('PortalGun (T21)', () => {
   beforeEach(async () => {
     pw = await PhysicsWorld.create();
     const bus = new EventBus();
-    ps = new PortalSystem({ physics: pw, bus });
+    ps = new PortalSystem({ physics: pw, bus, renderer: new FakeRenderer() });
     input = new FakeInput();
     player = new FakePlayer();
     player.body = pw.createBody({

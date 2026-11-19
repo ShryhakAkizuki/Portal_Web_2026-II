@@ -1,9 +1,24 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { PerspectiveCamera, Scene } from 'three';
+import type { WebGLRenderTarget, WebGLRenderer } from 'three';
 import { EventBus } from '../../src/core/EventBus';
 import { PhysicsWorld } from '../../src/systems/PhysicsWorld';
 import { PortalSystem } from '../../src/systems/PortalSystem';
 import { PORTAL_OFFSET } from '../../src/config';
-import type { PhysicsBody, PortalColor, RayHit, Vec3 } from '../../src/types/contracts';
+import type { IRenderer, PhysicsBody, PortalColor, RayHit, Vec3 } from '../../src/types/contracts';
+
+class FakeRenderer implements IRenderer {
+  readonly scene = new Scene();
+  readonly camera = new PerspectiveCamera(75, 1, 0.05, 200);
+
+  get gl(): WebGLRenderer {
+    throw new Error('gl no disponible en tests');
+  }
+  resize(_width: number, _height: number): void {}
+  render(): void {}
+  renderTo(_target: WebGLRenderTarget, _camera: PerspectiveCamera): void {}
+  dispose(): void {}
+}
 
 const WALL_HALF: Vec3 = [5, 2, 0.25];
 const VIEW: Vec3 = [0, 0, -1];
@@ -11,12 +26,14 @@ const VIEW: Vec3 = [0, 0, -1];
 describe('PortalSystem.place (T20)', () => {
   let pw: PhysicsWorld;
   let bus: EventBus;
+  let renderer: FakeRenderer;
   let ps: PortalSystem;
 
   beforeEach(async () => {
     pw = await PhysicsWorld.create();
     bus = new EventBus();
-    ps = new PortalSystem({ physics: pw, bus });
+    renderer = new FakeRenderer();
+    ps = new PortalSystem({ physics: pw, bus, renderer });
   });
 
   const wall = (
@@ -146,5 +163,23 @@ describe('PortalSystem.place (T20)', () => {
     expect(ps.get('blue')).toBeNull();
     expect(ps.isLinked()).toBe(false);
     expect(ps.get('orange')!.hostBody).toBe(w);
+  });
+
+  it('place añade el grupo visual a la escena y remove lo quita', () => {
+    wall(true);
+    expect(renderer.scene.children).toHaveLength(0);
+    expect(ps.place('blue', hitFront(0, 2)!, VIEW)).toBe(true);
+    expect(renderer.scene.children).toHaveLength(1);
+    ps.remove('blue');
+    expect(renderer.scene.children).toHaveLength(0);
+  });
+
+  it('dispose quita todos los visuales de la escena', () => {
+    wall(true);
+    expect(ps.place('blue', hitFront(0, 2)!, VIEW)).toBe(true);
+    expect(ps.place('orange', hitFront(4, 2)!, VIEW)).toBe(true);
+    expect(renderer.scene.children).toHaveLength(2);
+    ps.dispose();
+    expect(renderer.scene.children).toHaveLength(0);
   });
 });

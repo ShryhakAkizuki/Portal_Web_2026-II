@@ -26,7 +26,7 @@ async function main(): Promise<void> {
   const scenes = new SceneManager();
 
   registerAll();
-  const portals = new PortalSystem({ physics, bus });
+  const portals = new PortalSystem({ physics, bus, renderer });
   const level = new Level({ physics, renderer, bus, input, portals }, LEVEL_DATA);
 
   await scenes.change(level);
