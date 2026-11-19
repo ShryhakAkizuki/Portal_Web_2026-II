@@ -1,9 +1,15 @@
 import { Game } from './core/Game';
+import { EventBus } from './core/EventBus';
 import { SceneManager } from './core/SceneManager';
 import { Renderer } from './systems/Renderer';
 import { PhysicsWorld } from './systems/PhysicsWorld';
 import { InputManager } from './systems/InputManager';
-import { TestRoomScene } from './scenes/TestRoomScene';
+import { Level } from './levels/Level';
+import { registerAll } from './levels/registerAll';
+import testRoom from './levels/data/test-room.json';
+import type { IPlayer, LevelData } from './types/contracts';
+
+const LEVEL_DATA = testRoom as unknown as LevelData;
 
 async function main(): Promise<void> {
   const el = document.getElementById('game');
@@ -14,10 +20,13 @@ async function main(): Promise<void> {
   const renderer = new Renderer(canvas);
   const physics = await PhysicsWorld.create();
   const input = new InputManager({ target: window, canvas, doc: document });
+  const bus = new EventBus();
   const scenes = new SceneManager();
-  const scene = new TestRoomScene({ physics, renderer, input });
 
-  await scenes.change(scene);
+  registerAll();
+  const level = new Level({ physics, renderer, bus, input }, LEVEL_DATA);
+
+  await scenes.change(level);
 
   const game = new Game({
     update: (dt) => scenes.update(dt),
@@ -49,7 +58,8 @@ async function main(): Promise<void> {
         fps = Math.round((frames * 1000) / (now - last));
         frames = 0;
         last = now;
-        const p = scene.player;
+
+        const p = level.getEntity('player') as IPlayer | undefined;
         if (p) {
           const pos = physics.getPose(p.body!).position;
           hud.textContent =

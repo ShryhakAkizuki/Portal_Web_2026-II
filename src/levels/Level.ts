@@ -98,13 +98,13 @@ export class Level implements ILevel {
   }
 
   dispose(): void {
-    for (const e of [...this.list]) {
-      this.remove(e);
-    }
-    for (const c of [...this.controllers]) {
+    for (const c of [...this.controllers].reverse()) {
       c.dispose?.();
     }
     this.controllers.length = 0;
+    for (const e of [...this.list].reverse()) {
+      this.remove(e);
+    }
     this.player = null;
   }
 }
