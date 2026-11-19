@@ -1,7 +1,9 @@
 import { PORTAL_WIDTH, PORTAL_HEIGHT, PORTAL_OFFSET } from '../config';
 import { PortalVisual } from './PortalVisual';
+import { PortalViews } from './portalViews';
 import { axisOfNormal, snapUp, fitPortalOnFace, rectsOverlap, portalRect } from '../math/faceMath';
 import type { Axis } from '../math/faceMath';
+import { frameMatrix, makePortalFrame } from '../math/portalMath';
 import type {
   Entity,
   IEventBus,
@@ -13,7 +15,7 @@ import type {
   RayHit,
   Vec3,
 } from '../types/contracts';
-import type { PerspectiveCamera } from 'three';
+import type { Matrix4, PerspectiveCamera } from 'three';
 
 export interface PortalSystemDeps {
   physics: IPhysicsWorld;
@@ -38,12 +40,14 @@ export class PortalSystem implements IPortalSystem {
   private readonly physics: IPhysicsWorld;
   private readonly bus: IEventBus;
   private readonly visual: PortalVisual;
+  private readonly views: PortalViews;
   private readonly portals = new Map<PortalColor, PortalState>();
 
   constructor(deps: PortalSystemDeps) {
     this.physics = deps.physics;
     this.bus = deps.bus;
     this.visual = new PortalVisual(deps.renderer.scene);
+    this.views = new PortalViews(deps.renderer, this.visual);
   }
 
   place(color: PortalColor, hit: RayHit, viewDir: Vec3): boolean {
@@ -98,12 +102,22 @@ export class PortalSystem implements IPortalSystem {
   update(_dt: number): void {
   }
 
-  renderViews(_renderer: IRenderer, _camera: PerspectiveCamera): void {
+  renderViews(renderer: IRenderer, camera: PerspectiveCamera): void {
+    const blue = this.frameOf('blue');
+    const orange = this.frameOf('orange');
+    this.views.render(camera, blue, orange);
   }
 
   dispose(): void {
+    this.views.dispose();
     this.visual.dispose();
     this.portals.clear();
+  }
+
+  private frameOf(color: PortalColor): Matrix4 | null {
+    const state = this.portals.get(color);
+    if (state === undefined) return null;
+    return frameMatrix(makePortalFrame(state.position, state.normal, state.up));
   }
 
   private overlapsOtherPortal(

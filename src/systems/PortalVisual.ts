@@ -14,6 +14,7 @@ interface PortalParts {
   group: Group;
   surface: Mesh;
   border: Mesh;
+  dark: MeshBasicMaterial;
 }
 
 export class PortalVisual {
@@ -53,11 +54,17 @@ export class PortalVisual {
     if (parts !== undefined) parts.group.visible = visible;
   }
 
+  resetSurfaceMaterial(color: PortalColor): void {
+    const parts = this.parts.get(color);
+    if (parts !== undefined) parts.surface.material = parts.dark;
+  }
+
   dispose(): void {
-    for (const { group, surface, border } of this.parts.values()) {
+    for (const { group, surface, border, dark } of this.parts.values()) {
       group.removeFromParent();
       surface.geometry.dispose();
-      disposeMaterial(surface.material);
+      disposeMaterial(dark);
+      if (surface.material !== dark) disposeMaterial(surface.material);
       border.geometry.dispose();
       disposeMaterial(border.material);
     }
@@ -69,7 +76,8 @@ export class PortalVisual {
     group.matrixAutoUpdate = false;
 
     const circle = new CircleGeometry(0.5, 48);
-    const surface = new Mesh(circle, new MeshBasicMaterial({ color: SURFACE_COLOR }));
+    const dark = new MeshBasicMaterial({ color: SURFACE_COLOR });
+    const surface = new Mesh(circle, dark);
     surface.scale.set(PORTAL_WIDTH, PORTAL_HEIGHT, 1);
 
     const ring = new RingGeometry(0.46, 0.5, 48);
@@ -78,7 +86,7 @@ export class PortalVisual {
     border.position.z = 0.001;
 
     group.add(surface, border);
-    return { group, surface, border };
+    return { group, surface, border, dark };
   }
 }
 
