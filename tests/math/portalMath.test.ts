@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Matrix4, Vector3 } from 'three';
+import { Matrix4, PerspectiveCamera, Vector3, Vector4 } from 'three';
 import {
   makePortalFrame,
   frameMatrix,
@@ -10,6 +10,7 @@ import {
   crossedPortal,
   directionFromYawPitch,
   yawPitchFromDirection,
+  obliqueNearProjection,
 } from '../../src/math/portalMath';
 
 const TOL = 1e-6;
@@ -193,6 +194,37 @@ describe('math/portalMath', () => {
       const { yaw, pitch } = yawPitchFromDirection(new Vector3(0, 0, -5));
       expect(yaw).toBeCloseTo(0, 9);
       expect(pitch).toBeCloseTo(0, 9);
+    });
+  });
+
+  describe('obliqueNearProjection (T24)', () => {
+    // Cámara en el origen mirando a −Z: view = identidad.
+    const proj = new PerspectiveCamera(75, 1, 0.05, 200).projectionMatrix;
+    const view = new Matrix4();
+    const zNdc = (P: Matrix4, p: Vector3): number => {
+      const v = new Vector4(p.x, p.y, p.z, 1).applyMatrix4(P);
+      return v.z / v.w;
+    };
+
+    it('caso recortado: plano z = −5, normal (0,0,−1)', () => {
+      const f = makePortalFrame([0, 0, -5], [0, 0, -1], [0, 1, 0]);
+      const P = obliqueNearProjection(proj, view, f);
+      expect(zNdc(P, new Vector3(0, 0, -5))).toBeCloseTo(-1, 3);
+      expect(zNdc(P, new Vector3(0, 0, -8))).toBeGreaterThan(-1);
+      expect(zNdc(P, new Vector3(0, 0, -3))).toBeLessThan(-1);
+    });
+
+    it('caso sin recorte: normal (0,0,1) (cámara en el lado positivo) → proyección idéntica', () => {
+      const f = makePortalFrame([0, 0, -5], [0, 0, 1], [0, 1, 0]);
+      const P = obliqueNearProjection(proj, view, f);
+      expect(P.elements).toEqual(proj.elements);
+    });
+
+    it('no muta la proyección de entrada', () => {
+      const original = proj.elements.slice();
+      const f = makePortalFrame([0, 0, -5], [0, 0, -1], [0, 1, 0]);
+      obliqueNearProjection(proj, view, f);
+      expect(proj.elements).toEqual(original);
     });
   });
 });

@@ -4,6 +4,7 @@ import { PortalViews } from './portalViews';
 import { axisOfNormal, snapUp, fitPortalOnFace, rectsOverlap, portalRect } from '../math/faceMath';
 import type { Axis } from '../math/faceMath';
 import { frameMatrix, makePortalFrame } from '../math/portalMath';
+import type { PortalFrame } from '../math/portalMath';
 import type {
   Entity,
   IEventBus,
@@ -105,7 +106,9 @@ export class PortalSystem implements IPortalSystem {
   renderViews(renderer: IRenderer, camera: PerspectiveCamera): void {
     const blue = this.frameOf('blue');
     const orange = this.frameOf('orange');
-    this.views.render(camera, blue, orange);
+    const blueOut = this.frameOfFrame('blue');
+    const orangeOut = this.frameOfFrame('orange');
+    this.views.render(camera, blue, orange, orangeOut, blueOut);
   }
 
   dispose(): void {
@@ -115,9 +118,14 @@ export class PortalSystem implements IPortalSystem {
   }
 
   private frameOf(color: PortalColor): Matrix4 | null {
+    const f = this.frameOfFrame(color);
+    return f === null ? null : frameMatrix(f);
+  }
+
+  private frameOfFrame(color: PortalColor): PortalFrame | null {
     const state = this.portals.get(color);
     if (state === undefined) return null;
-    return frameMatrix(makePortalFrame(state.position, state.normal, state.up));
+    return makePortalFrame(state.position, state.normal, state.up);
   }
 
   private overlapsOtherPortal(

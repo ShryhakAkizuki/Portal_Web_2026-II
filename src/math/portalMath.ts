@@ -1,4 +1,4 @@
-import { Matrix3, Matrix4, Vector3 } from 'three';
+import { Matrix3, Matrix4, Plane, Vector3, Vector4 } from 'three';
 import type { Vec3 } from '../types/contracts';
 
 export interface PortalFrame {
@@ -73,4 +73,24 @@ export function yawPitchFromDirection(d: Vector3): { yaw: number; pitch: number 
     yaw: Math.atan2(-n.x, -n.z),
     pitch: Math.asin(Math.min(1, Math.max(-1, n.y))),
   };
+}
+
+export function obliqueNearProjection(proj: Matrix4, view: Matrix4, f: PortalFrame): Matrix4 {
+  const plane = new Plane().setFromNormalAndCoplanarPoint(f.normal, f.position).applyMatrix4(view);
+  const c = new Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.constant);
+  if (c.w >= 0) return proj.clone();
+  const P = proj.clone();
+  const e = P.elements;
+  const q = new Vector4(
+    (Math.sign(c.x) + e[8]) / e[0],
+    (Math.sign(c.y) + e[9]) / e[5],
+    -1,
+    (1 + e[10]) / e[14],
+  );
+  c.multiplyScalar(2 / c.dot(q));
+  e[2] = c.x;
+  e[6] = c.y;
+  e[10] = c.z + 1;
+  e[14] = c.w;
+  return P;
 }

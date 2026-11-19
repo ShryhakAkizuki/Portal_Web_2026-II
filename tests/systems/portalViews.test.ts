@@ -11,6 +11,7 @@ import {
 } from 'three';
 import type { Mesh, WebGLRenderer } from 'three';
 import { PortalViews, virtualCameraWorld } from '../../src/systems/portalViews';
+import { obliqueNearProjection } from '../../src/math/portalMath';
 import { PortalVisual } from '../../src/systems/PortalVisual';
 import { frameMatrix, makePortalFrame } from '../../src/math/portalMath';
 import type { IRenderer, PortalColor, PortalState, Vec3 } from '../../src/types/contracts';
@@ -23,6 +24,11 @@ const UP: Vec3 = [0, 1, 0];
 
 const M_A = frameMatrix(makePortalFrame(POS_A, NOR_A, UP));
 const M_B = frameMatrix(makePortalFrame(POS_B, NOR_B, UP));
+const F_A = makePortalFrame(POS_A, NOR_A, UP);
+const F_B = makePortalFrame(POS_B, NOR_B, UP);
+
+const renderLinked = (views: PortalViews, camera: PerspectiveCamera) =>
+  views.render(camera, M_A, M_B, F_B, F_A);
 
 const stateOf = (color: PortalColor, position: Vec3, normal: Vec3, up: Vec3): PortalState => ({
   color,
@@ -152,7 +158,7 @@ describe('PortalViews (T23 · sin WebGL)', () => {
     const marker = new MeshBasicMaterial({ color: 0xffffff });
     visual.setSurfaceMaterial('blue', marker);
 
-    views.render(camera, M_A, null);
+    views.render(camera, M_A, null, F_B, F_A);
 
     expect(calls).toHaveLength(0);
     expect(gl.accesses).toBe(0);
@@ -163,7 +169,7 @@ describe('PortalViews (T23 · sin WebGL)', () => {
 
   it('enlazado: renderTo dos veces con los targets y cámaras virtuales correctos', () => {
     const { gl, calls, views, camera } = setup();
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
 
     expect(gl.accesses).toBe(1);
     expect(calls).toHaveLength(2);
@@ -184,7 +190,7 @@ describe('PortalViews (T23 · sin WebGL)', () => {
 
   it('la superficie muestra la textura de su target con la resolución del buffer', () => {
     const { visual, calls, views, camera } = setup();
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
 
     const matBlue = (visual.getSurface('blue') as Mesh).material as ShaderMaterial;
     expect(matBlue).toBeInstanceOf(ShaderMaterial);
@@ -195,11 +201,11 @@ describe('PortalViews (T23 · sin WebGL)', () => {
     expect(matOrange.uniforms.map.value).toBe(calls[1].target.texture);
   });
 
-  it('las cámaras virtuales se reutilizan y copian la proyección de la principal', () => {
+  it('las cámaras virtuales se reutilizan y su proyección se recorta oblicuamente (T24)', () => {
     const { calls, views, camera } = setup();
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     const cam1 = calls[0].cam;
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     expect(calls[0].cam).toBe(cam1);
     expect(cam1.matrixAutoUpdate).toBe(false);
     expect(cam1.matrixWorldAutoUpdate).toBe(false);
@@ -207,22 +213,32 @@ describe('PortalViews (T23 · sin WebGL)', () => {
     expect(cam1.aspect).toBe(camera.aspect);
     expect(cam1.near).toBe(camera.near);
     expect(cam1.far).toBe(camera.far);
-    expect(cam1.projectionMatrix.elements).toEqual(camera.projectionMatrix.elements);
-    expect(cam1.projectionMatrixInverse.elements).toEqual(camera.projectionMatrixInverse.elements);
+    // La vista blue recorta con el plano de B (su salida).
+    const expectedBlue = obliqueNearProjection(camera.projectionMatrix, cam1.matrixWorldInverse, F_B);
+    expect(cam1.projectionMatrix.elements).toEqual(expectedBlue.elements);
+    // La proyección principal NO se recortó: la entrada no se muta.
+    expect(cam1.projectionMatrix.elements).not.toEqual(camera.projectionMatrix.elements);
+    const invBlue = cam1.projectionMatrix.clone().invert();
+    invBlue.elements.forEach((v, i) =>
+      expect(cam1.projectionMatrixInverse.elements[i]).toBeCloseTo(v, 12));
+    // La vista orange recorta con el plano de A (su salida).
+    const cam2 = calls[1].cam;
+    const expectedOrange = obliqueNearProjection(camera.projectionMatrix, cam2.matrixWorldInverse, F_A);
+    expect(cam2.projectionMatrix.elements).toEqual(expectedOrange.elements);
   });
 
   it('tras el render las superficies vuelven a estar visibles', () => {
     const { scene, views, camera } = setup();
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     for (const child of scene.children) expect(child.visible).toBe(true);
   });
 
   it('si cambia el buffer, redimensiona el target sin re-crear el objeto', () => {
     const { gl, calls, views, camera } = setup();
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     const rt1 = calls[0].target;
     gl.setBuffer(1024, 512);
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     const rt2 = calls[2].target;
     expect(rt2).toBe(rt1);
     expect([rt1.width, rt1.height]).toEqual([1024, 512]);
@@ -230,18 +246,18 @@ describe('PortalViews (T23 · sin WebGL)', () => {
 
   it('perder y recuperar el enlace reutiliza el mismo material de superficie', () => {
     const { visual, calls, views, camera } = setup();
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     const mat1 = (visual.getSurface('blue') as Mesh).material;
-    views.render(camera, M_A, null);
+    views.render(camera, M_A, null, F_B, F_A);
     expect((visual.getSurface('blue') as Mesh).material).not.toBe(mat1);
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     expect((visual.getSurface('blue') as Mesh).material).toBe(mat1);
     expect(calls).toHaveLength(4);
   });
 
   it('dispose libera targets y materiales', () => {
     const { visual, calls, views, camera } = setup();
-    views.render(camera, M_A, M_B);
+    renderLinked(views, camera);
     const mat = (visual.getSurface('blue') as Mesh).material as ShaderMaterial;
     const rtSpy = vi.spyOn(calls[0].target, 'dispose');
     const matSpy = vi.spyOn(mat, 'dispose');

@@ -6,7 +6,8 @@ import {
   Vector2,
   WebGLRenderTarget,
 } from 'three';
-import { portalTransform } from '../math/portalMath';
+import { obliqueNearProjection, portalTransform } from '../math/portalMath';
+import type { PortalFrame } from '../math/portalMath';
 import type { IRenderer, PortalColor } from '../types/contracts';
 import type { PortalVisual } from './PortalVisual';
 
@@ -15,7 +16,9 @@ export function virtualCameraWorld(from: Matrix4, to: Matrix4, cameraWorld: Matr
 }
 
 const SURFACE_VERTEX = /* glsl */ `
-gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+void main() {
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
 `;
 
 const SURFACE_FRAGMENT = /* glsl */ `
@@ -45,7 +48,13 @@ export class PortalViews {
     this.visual = visual;
   }
 
-  render(camera: PerspectiveCamera, blue: Matrix4 | null, orange: Matrix4 | null): void {
+  render(
+    camera: PerspectiveCamera,
+    blue: Matrix4 | null,
+    orange: Matrix4 | null,
+    blueClip: PortalFrame | null,
+    orangeClip: PortalFrame | null,
+  ): void {
     if (blue === null || orange === null) {
       for (const color of COLORS) this.visual.resetSurfaceMaterial(color);
       return;
@@ -53,8 +62,8 @@ export class PortalViews {
     const size = this.renderer.gl.getDrawingBufferSize(new Vector2());
     this.bufferWidth = size.x;
     this.bufferHeight = size.y;
-    this.renderThrough('blue', blue, orange, camera);
-    this.renderThrough('orange', orange, blue, camera);
+    this.renderThrough('blue', blue, orange, blueClip, camera);
+    this.renderThrough('orange', orange, blue, orangeClip, camera);
   }
 
   dispose(): void {
@@ -69,6 +78,7 @@ export class PortalViews {
     color: PortalColor,
     from: Matrix4,
     to: Matrix4,
+    out: PortalFrame | null,
     camera: PerspectiveCamera,
   ): void {
     const rt = this.ensureTarget(color);
@@ -76,6 +86,12 @@ export class PortalViews {
     const cam = this.ensureCamera(color, camera);
     cam.matrixWorld.copy(virtualCameraWorld(from, to, camera.matrixWorld));
     cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+    if (out !== null) {
+      cam.projectionMatrix.copy(obliqueNearProjection(camera.projectionMatrix, cam.matrixWorldInverse, out));
+    } else {
+      cam.projectionMatrix.copy(camera.projectionMatrix);
+    }
+    cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
 
     const other: PortalColor = color === 'blue' ? 'orange' : 'blue';
     this.visual.setVisible(color, false);
@@ -114,8 +130,6 @@ export class PortalViews {
     cam.aspect = camera.aspect;
     cam.near = camera.near;
     cam.far = camera.far;
-    cam.projectionMatrix.copy(camera.projectionMatrix);
-    cam.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
     return cam;
   }
 
