@@ -4,6 +4,8 @@ import { SceneManager } from './core/SceneManager';
 import { Renderer } from './systems/Renderer';
 import { PhysicsWorld } from './systems/PhysicsWorld';
 import { InputManager } from './systems/InputManager';
+import { PortalSystem } from './systems/PortalSystem';
+import { PortalGun } from './gameplay/PortalGun';
 import { Level } from './levels/Level';
 import { registerAll } from './levels/registerAll';
 import testRoom from './levels/data/test-room.json';
@@ -24,9 +26,15 @@ async function main(): Promise<void> {
   const scenes = new SceneManager();
 
   registerAll();
-  const level = new Level({ physics, renderer, bus, input }, LEVEL_DATA);
+  const portals = new PortalSystem({ physics, bus });
+  const level = new Level({ physics, renderer, bus, input, portals }, LEVEL_DATA);
 
   await scenes.change(level);
+
+  const player = level.getEntity('player') as IPlayer | undefined;
+  if (player) {
+    level.addController(new PortalGun({ physics, input, portals, player }));
+  }
 
   const game = new Game({
     update: (dt) => scenes.update(dt),
