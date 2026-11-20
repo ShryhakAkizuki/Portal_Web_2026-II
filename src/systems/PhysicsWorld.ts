@@ -217,4 +217,8 @@ export class PhysicsWorld implements IPhysicsWorld {
   setBodyEnabled(body: PhysicsBody, enabled: boolean): void {
     body.rb.setEnabled(enabled);
   }
+
+  isDynamic(body: PhysicsBody): boolean {
+    return body.rb.bodyType() === RAPIER.RigidBodyType.Dynamic;
+  }
 }
