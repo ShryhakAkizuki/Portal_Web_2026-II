@@ -4,6 +4,7 @@ export const PORTAL_WIDTH = 1.0;
 export const PORTAL_HEIGHT = 2.0;
 export const PORTAL_OFFSET = 0.01;
 export const PORTAL_ZONE_DEPTH = 1.0;
+export const PORTAL_RECURSION = 2;
 export const PLAYER = {
   radius: 0.3, halfHeight: 0.6,
   eyeOffset: 0.7,
