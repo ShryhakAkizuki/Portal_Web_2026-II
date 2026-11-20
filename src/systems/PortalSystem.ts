@@ -39,6 +39,8 @@ type NormalAxis = { axis: Axis; sign: 1 | -1 };
 const PLANE_TOL = 1e-3;
 const OVERLAP_MARGIN = 0.05;
 const PROP_PUSH = 0.55;
+const PLAYER_PUSH_HORIZONTAL = 0.35;
+const PLAYER_PUSH_VERTICAL = 0.95;
 
 function cross(a: Vec3, b: Vec3): Vec3 {
   return [
@@ -150,18 +152,24 @@ export class PortalSystem implements IPortalSystem {
     const T = portalTransform(frameMatrix(f), frameMatrix(out));
     const pose = this.physics.getPose(e.body);
     const pos = transformPoint(T, toV3(pose.position));
-    const rot = toQuat(pose.rotation);
-    rot.premultiply(new Quaternion().setFromRotationMatrix(T));
-    pos.addScaledVector(out.normal, PROP_PUSH);
+    const push =
+      e.kind === 'player'
+        ? Math.abs(out.normal.y) < 0.5
+          ? PLAYER_PUSH_HORIZONTAL
+          : PLAYER_PUSH_VERTICAL
+        : PROP_PUSH;
+    pos.addScaledVector(out.normal, push);
 
     if (this.physics.isDynamic(e.body)) {
+      const rot = toQuat(pose.rotation);
+      rot.premultiply(new Quaternion().setFromRotationMatrix(T));
       const vel = this.physics.getVelocity(e.body);
       const lin = transformDirection(T, toV3(vel.linear));
       const ang = transformDirection(T, toV3(vel.angular));
       this.physics.setPose(e.body, fromV3(pos), fromQuat(rot));
       this.physics.setVelocity(e.body, [lin.x, lin.y, lin.z], [ang.x, ang.y, ang.z]);
     } else {
-      this.physics.setPose(e.body, fromV3(pos), fromQuat(rot));
+      this.physics.setPose(e.body, fromV3(pos));
     }
 
     e.resetInterpolation();

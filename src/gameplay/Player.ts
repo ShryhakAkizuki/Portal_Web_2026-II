@@ -1,6 +1,9 @@
 import { PLAYER } from '../config';
 import { Vector3 } from 'three';
+import type { Matrix4 } from 'three';
 import { BaseEntity, type EntityDeps } from './Entity';
+import { transformDirection, yawPitchFromDirection } from '../math/portalMath';
+import { fromV3, toV3 } from '../math/vec';
 import type { IInput, IPlayer, Vec3 } from '../types/contracts';
 
 const clamp = (v: number, min: number, max: number): number =>
@@ -73,6 +76,18 @@ export class Player extends BaseEntity implements IPlayer {
   get eyePosition(): Vec3 {
     const p = this.deps.physics.getPose(this.body!).position;
     return [p[0], p[1] + PLAYER.eyeOffset, p[2]];
+  }
+
+  onTeleport(T: Matrix4): void {
+    const v = fromV3(transformDirection(T, toV3(this.velocity)));
+    this.velocity[0] = v[0];
+    this.velocity[1] = v[1];
+    this.velocity[2] = v[2];
+    const d = transformDirection(T, toV3(this.lookDirection()));
+    const { yaw, pitch } = yawPitchFromDirection(d);
+    this.yaw = yaw;
+    this.pitch = pitch;
+    this.grounded = false;
   }
 
   look(dx: number, dy: number): void {
