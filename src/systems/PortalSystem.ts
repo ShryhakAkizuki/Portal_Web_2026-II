@@ -1,4 +1,5 @@
 import { PORTAL_WIDTH, PORTAL_HEIGHT, PORTAL_OFFSET } from '../config';
+import { HostWalls } from './HostWalls';
 import { PortalVisual } from './PortalVisual';
 import { PortalViews } from './portalViews';
 import { axisOfNormal, snapUp, fitPortalOnFace, rectsOverlap, portalRect } from '../math/faceMath';
@@ -42,6 +43,7 @@ export class PortalSystem implements IPortalSystem {
   private readonly bus: IEventBus;
   private readonly visual: PortalVisual;
   private readonly views: PortalViews;
+  private readonly hostWalls: HostWalls;
   private readonly portals = new Map<PortalColor, PortalState>();
 
   constructor(deps: PortalSystemDeps) {
@@ -49,6 +51,7 @@ export class PortalSystem implements IPortalSystem {
     this.bus = deps.bus;
     this.visual = new PortalVisual(deps.renderer.scene);
     this.views = new PortalViews(deps.renderer, this.visual);
+    this.hostWalls = new HostWalls(deps.physics);
   }
 
   place(color: PortalColor, hit: RayHit, viewDir: Vec3): boolean {
@@ -78,12 +81,14 @@ export class PortalSystem implements IPortalSystem {
     this.portals.set(color, state);
     this.visual.show(state);
     this.bus.emit('portal:placed', { color });
+    this.syncHoles();
     return true;
   }
 
   remove(color: PortalColor): void {
     this.portals.delete(color);
     this.visual.hide(color);
+    this.syncHoles();
   }
 
   get(color: PortalColor): PortalState | null {
@@ -112,9 +117,22 @@ export class PortalSystem implements IPortalSystem {
   }
 
   dispose(): void {
+    this.hostWalls.dispose();
     this.views.dispose();
     this.visual.dispose();
     this.portals.clear();
+  }
+
+  private syncHoles(): void {
+    if (!this.isLinked()) {
+      this.hostWalls.clearHole('blue');
+      this.hostWalls.clearHole('orange');
+      return;
+    }
+    const blue = this.portals.get('blue');
+    const orange = this.portals.get('orange');
+    if (blue && blue.hostBody) this.hostWalls.setHole('blue', blue.hostBody, blue);
+    if (orange && orange.hostBody) this.hostWalls.setHole('orange', orange.hostBody, orange);
   }
 
   private frameOf(color: PortalColor): Matrix4 | null {
