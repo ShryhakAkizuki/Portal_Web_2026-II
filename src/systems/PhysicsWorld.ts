@@ -214,7 +214,11 @@ export class PhysicsWorld implements IPhysicsWorld {
     throw new Error('not implemented: T31');
   }
 
-  setBodyEnabled(_body: PhysicsBody, _enabled: boolean): void {
-    throw new Error('not implemented: T26');
+  setBodyEnabled(body: PhysicsBody, enabled: boolean): void {
+    body.rb.setEnabled(enabled);
+  }
+
+  isDynamic(body: PhysicsBody): boolean {
+    return body.rb.bodyType() === RAPIER.RigidBodyType.Dynamic;
   }
 }

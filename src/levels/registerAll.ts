@@ -1,6 +1,7 @@
 import { BaseEntity } from '../gameplay/Entity';
+import { Prop } from '../gameplay/Prop';
 import { registerBuilder } from './entityFactory';
-import type { ExitDef, LevelDeps } from '../types/contracts';
+import type { CubeDef, ExitDef, LevelDeps } from '../types/contracts';
 
 export class ExitPlaceholder extends BaseEntity {
   constructor(id: string, def: ExitDef, deps: LevelDeps) {
@@ -33,4 +34,10 @@ export function registerAll(): void {
     return new ExitPlaceholder(def.id, def, deps);
   });
 
+  registerBuilder('cube', (def, deps) => {
+    if (def.type !== 'cube') {
+      throw new Error(`Builder de "cube" recibió def de tipo "${def.type}"`);
+    }
+    return new Prop(deps, def.id, def.position);
+  });
 }

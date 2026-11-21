@@ -251,10 +251,28 @@ describe('PhysicsWorld (T09)', () => {
     pw.removeBody(floor);
   });
 
-  it('queryOverlaps y setBodyEnabled lanzan "not implemented" (T31/T26)', () => {
+  it('queryOverlaps lanza "not implemented" (T31)', () => {
     const b = pw.createBody(boxDesc());
     expect(() => pw.queryOverlaps(b)).toThrow(/not implemented/);
-    expect(() => pw.setBodyEnabled(b, false)).toThrow(/not implemented/);
     pw.removeBody(b);
+  });
+
+  it('setBodyEnabled(false): el raycast lo atraviesa; con true vuelve a impactar (T26)', () => {
+    const wall = pw.createBody(boxDesc({ position: [0, 0, 0] }));
+    pw.step(1 / 60);
+
+    expect(pw.raycast([0, 0, 2], [0, 0, -1], 5)).not.toBeNull();
+
+    pw.setBodyEnabled(wall, false);
+    expect(wall.rb.isEnabled()).toBe(false);
+    pw.step(1 / 60);
+    expect(pw.raycast([0, 0, 2], [0, 0, -1], 5)).toBeNull();
+
+    pw.setBodyEnabled(wall, true);
+    expect(wall.rb.isEnabled()).toBe(true);
+    pw.step(1 / 60);
+    expect(pw.raycast([0, 0, 2], [0, 0, -1], 5)).not.toBeNull();
+
+    pw.removeBody(wall);
   });
 });

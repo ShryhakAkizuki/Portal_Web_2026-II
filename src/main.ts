@@ -6,10 +6,11 @@ import { PhysicsWorld } from './systems/PhysicsWorld';
 import { InputManager } from './systems/InputManager';
 import { PortalSystem } from './systems/PortalSystem';
 import { PortalGun } from './gameplay/PortalGun';
+import { Prop } from './gameplay/Prop';
 import { Level } from './levels/Level';
 import { registerAll } from './levels/registerAll';
 import testRoom from './levels/data/test-room.json';
-import type { IPlayer, LevelData } from './types/contracts';
+import type { IPlayer, LevelData, Vec3 } from './types/contracts';
 
 const LEVEL_DATA = testRoom as unknown as LevelData;
 
@@ -49,6 +50,25 @@ async function main(): Promise<void> {
   }
   window.addEventListener('resize', resize);
   resize();
+
+  if (new URLSearchParams(window.location.search).has('debug')) {
+    const testCube = new Prop({ physics, renderer }, 'test-cube', [0, 1.5, 2]);
+    physics.setVelocity(testCube.body!, [0, 0, -4]);
+    level.add(testCube);
+    window.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'r' && ev.key !== 'R') {
+        return;
+      }
+      const p = level.getEntity('player') as IPlayer | undefined;
+      if (!p || !testCube.body) {
+        return;
+      }
+      const eye = p.eyePosition;
+      const d = p.lookDirection();
+      physics.setPose(testCube.body, [eye[0] + d[0] * 1.5, Math.max(eye[1] + d[1] * 1.5, 0.4), eye[2] + d[2] * 1.5]);
+      physics.setVelocity(testCube.body, [d[0] * 4, 0, d[2] * 4]);
+    });
+  }
 
   if (new URLSearchParams(window.location.search).has('debug')) {
     const hud = document.createElement('div');

@@ -90,6 +90,7 @@ export interface IPhysicsWorld {
   getBoxBounds(body: PhysicsBody): { min: Vec3; max: Vec3 } | null;
   queryOverlaps(sensor: PhysicsBody): PhysicsBody[];
   setBodyEnabled(body: PhysicsBody, enabled: boolean): void;
+  isDynamic(body: PhysicsBody): boolean; // T27: true si el cuerpo es dinámico
 }
 
 // ---------- Render ----------
