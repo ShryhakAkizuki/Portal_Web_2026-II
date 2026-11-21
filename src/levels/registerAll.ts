@@ -38,6 +38,6 @@ export function registerAll(): void {
     if (def.type !== 'cube') {
       throw new Error(`Builder de "cube" recibió def de tipo "${def.type}"`);
     }
-    return new Prop(deps, def.id, def.position);
+    return new Prop(deps, deps.bus, def.id, def.position);
   });
 }

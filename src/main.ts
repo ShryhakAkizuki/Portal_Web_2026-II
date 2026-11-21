@@ -7,6 +7,7 @@ import { InputManager } from './systems/InputManager';
 import { PortalSystem } from './systems/PortalSystem';
 import { PortalGun } from './gameplay/PortalGun';
 import { Prop } from './gameplay/Prop';
+import { PropHolder } from './gameplay/PropHolder';
 import { Level } from './levels/Level';
 import { registerAll } from './levels/registerAll';
 import testRoom from './levels/data/test-room.json';
@@ -35,6 +36,15 @@ async function main(): Promise<void> {
   const player = level.getEntity('player') as IPlayer | undefined;
   if (player) {
     level.addController(new PortalGun({ physics, input, portals, player }));
+    level.addController(
+      new PropHolder({
+        physics,
+        input,
+        player,
+        bus,
+        getEntity: (id) => level.getEntity(id),
+      }),
+    );
   }
 
   const game = new Game({
@@ -52,7 +62,7 @@ async function main(): Promise<void> {
   resize();
 
   if (new URLSearchParams(window.location.search).has('debug')) {
-    const testCube = new Prop({ physics, renderer }, 'test-cube', [0, 1.5, 2]);
+    const testCube = new Prop({ physics, renderer }, bus, 'test-cube', [0, 1.5, 2]);
     physics.setVelocity(testCube.body!, [0, 0, -4]);
     level.add(testCube);
     window.addEventListener('keydown', (ev) => {

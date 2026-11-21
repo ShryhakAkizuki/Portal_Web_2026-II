@@ -97,7 +97,7 @@ describe('PortalClones: cuerpo partido (T29)', () => {
   };
 
   const frozenCube = (position: Vec3): Prop => {
-    const cube = new Prop(deps, 'cubo-1', position);
+    const cube = new Prop(deps, bus, 'cubo-1', position);
     pw.setGravityScale(cube.body!, 0);
     pw.step(DT);
     ps.track(cube);
