@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RigidBodyType } from '@dimforge/rapier3d-compat';
 import { BoxGeometry, Mesh, MeshStandardMaterial, Scene } from 'three';
+import { EventBus } from '../../src/core/EventBus';
 import { PhysicsWorld } from '../../src/systems/PhysicsWorld';
 import { Prop } from '../../src/gameplay/Prop';
 import type { EntityDeps } from '../../src/gameplay/Entity';
@@ -12,14 +13,16 @@ describe('Prop (T27)', () => {
   let pw: PhysicsWorld;
   let scene: Scene;
   let deps: EntityDeps;
+  let bus: EventBus;
 
   beforeEach(async () => {
     pw = await PhysicsWorld.create();
     scene = new Scene();
     deps = { physics: pw, renderer: { scene } as unknown as IRenderer };
+    bus = new EventBus();
   });
 
-  const make = (position: Vec3 = [1, 2, 3]): Prop => new Prop(deps, 'cubo-1', position);
+  const make = (position: Vec3 = [1, 2, 3]): Prop => new Prop(deps, bus, 'cubo-1', position);
 
   it('cuerpo `dynamic` cubo 0.3 de halfExtents, friction 0.6, ccd y userData { entityId, kind: prop }', () => {
     const p = make();
@@ -45,13 +48,28 @@ describe('Prop (T27)', () => {
     expect(scene.children).toContain(mesh);
   });
 
-  it('grab/release cambian solo `held` (T30 los completa)', () => {
+  it('grab: held, gravityScale 0 y evento prop:grabbed', () => {
     const p = make();
-    expect(p.held).toBe(false);
+    const grabbed: string[] = [];
+    bus.on('prop:grabbed', (d) => grabbed.push(d.id));
     p.grab(FAKE_PLAYER);
     expect(p.held).toBe(true);
+    expect(p.body!.rb.gravityScale()).toBe(0);
+    expect(grabbed).toEqual(['cubo-1']);
+  });
+
+  it('release: held false, gravityScale 1, velocidad limitada a 10 m/s y evento prop:released', () => {
+    const p = make();
+    p.grab(FAKE_PLAYER);
+    pw.setVelocity(p.body!, [30, 40, 0]); // 50 m/s
+    const released: string[] = [];
+    bus.on('prop:released', (d) => released.push(d.id));
     p.release();
     expect(p.held).toBe(false);
+    expect(p.body!.rb.gravityScale()).toBe(1);
+    const v = pw.getVelocity(p.body!).linear;
+    expect(Math.hypot(v[0], v[1], v[2])).toBeCloseTo(10, 5);
+    expect(released).toEqual(['cubo-1']);
   });
 
   it('dispose quita el cuerpo y la malla, libera recursos; es idempotente', () => {

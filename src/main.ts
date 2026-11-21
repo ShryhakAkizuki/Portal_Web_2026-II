@@ -5,8 +5,11 @@ import { Renderer } from './systems/Renderer';
 import { PhysicsWorld } from './systems/PhysicsWorld';
 import { InputManager } from './systems/InputManager';
 import { PortalSystem } from './systems/PortalSystem';
+import { Button } from './gameplay/Button';
+import { Door } from './gameplay/Door';
 import { PortalGun } from './gameplay/PortalGun';
 import { Prop } from './gameplay/Prop';
+import { PropHolder } from './gameplay/PropHolder';
 import { Level } from './levels/Level';
 import { registerAll } from './levels/registerAll';
 import testRoom from './levels/data/test-room.json';
@@ -35,6 +38,15 @@ async function main(): Promise<void> {
   const player = level.getEntity('player') as IPlayer | undefined;
   if (player) {
     level.addController(new PortalGun({ physics, input, portals, player }));
+    level.addController(
+      new PropHolder({
+        physics,
+        input,
+        player,
+        bus,
+        getEntity: (id) => level.getEntity(id),
+      }),
+    );
   }
 
   const game = new Game({
@@ -51,56 +63,73 @@ async function main(): Promise<void> {
   window.addEventListener('resize', resize);
   resize();
 
-  if (new URLSearchParams(window.location.search).has('debug')) {
-    const testCube = new Prop({ physics, renderer }, 'test-cube', [0, 1.5, 2]);
-    physics.setVelocity(testCube.body!, [0, 0, -4]);
-    level.add(testCube);
-    window.addEventListener('keydown', (ev) => {
-      if (ev.key !== 'r' && ev.key !== 'R') {
-        return;
-      }
+  const testCube = new Prop({ physics, renderer }, bus, 'test-cube', [0, 1.5, 2]);
+  physics.setVelocity(testCube.body!, [0, 0, -4]);
+  level.add(testCube);
+
+  const testButton = new Button({ physics, renderer, bus }, {
+    type: 'button',
+    id: 'test-button',
+    position: [1.5, 0.05, 0],
+  });
+  level.add(testButton);
+  const testDoor = new Door(
+    {
+      type: 'door',
+      id: 'test-door',
+      position: [4, 1.5, 0],
+      size: [2, 3, 0.5],
+      opensOn: ['test-button'],
+      mode: 'any',
+    },
+    { physics, renderer, bus },
+  );
+  level.add(testDoor);
+  window.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'r' && ev.key !== 'R') {
+      return;
+    }
+    const p = level.getEntity('player') as IPlayer | undefined;
+    if (!p || !testCube.body) {
+      return;
+    }
+    const eye = p.eyePosition;
+    const d = p.lookDirection();
+    physics.setPose(testCube.body, [eye[0] + d[0] * 1.5, Math.max(eye[1] + d[1] * 1.5, 0.4), eye[2] + d[2] * 1.5]);
+    physics.setVelocity(testCube.body, [d[0] * 4, 0, d[2] * 4]);
+  });
+
+  bus.on('level:completed', (d) => console.log('level:completed', d));
+
+  const hud = document.createElement('div');
+  hud.style.cssText =
+    'position:fixed;top:8px;left:8px;z-index:10;font:13px/1.4 monospace;' +
+    'color:#e6e6e6;background:rgba(0,0,0,0.6);padding:6px 8px;border-radius:4px;pointer-events:none;';
+  document.body.appendChild(hud);
+  let fps = 0;
+  let frames = 0;
+  let last = performance.now();
+  const tick = (): void => {
+    frames += 1;
+    const now = performance.now();
+    if (now - last >= 500) {
+      fps = Math.round((frames * 1000) / (now - last));
+      frames = 0;
+      last = now;
+
       const p = level.getEntity('player') as IPlayer | undefined;
-      if (!p || !testCube.body) {
-        return;
+      if (p) {
+        const pos = physics.getPose(p.body!).position;
+        hud.textContent =
+          `fps: ${fps}\npos: ${pos[0].toFixed(2)}, ${pos[1].toFixed(2)}, ${pos[2].toFixed(2)}\n` +
+          `grounded: ${p.grounded}`;
+      } else {
+        hud.textContent = `fps: ${fps}`;
       }
-      const eye = p.eyePosition;
-      const d = p.lookDirection();
-      physics.setPose(testCube.body, [eye[0] + d[0] * 1.5, Math.max(eye[1] + d[1] * 1.5, 0.4), eye[2] + d[2] * 1.5]);
-      physics.setVelocity(testCube.body, [d[0] * 4, 0, d[2] * 4]);
-    });
-  }
-
-  if (new URLSearchParams(window.location.search).has('debug')) {
-    const hud = document.createElement('div');
-    hud.style.cssText =
-      'position:fixed;top:8px;left:8px;z-index:10;font:13px/1.4 monospace;' +
-      'color:#e6e6e6;background:rgba(0,0,0,0.6);padding:6px 8px;border-radius:4px;pointer-events:none;';
-    document.body.appendChild(hud);
-    let fps = 0;
-    let frames = 0;
-    let last = performance.now();
-    const tick = (): void => {
-      frames += 1;
-      const now = performance.now();
-      if (now - last >= 500) {
-        fps = Math.round((frames * 1000) / (now - last));
-        frames = 0;
-        last = now;
-
-        const p = level.getEntity('player') as IPlayer | undefined;
-        if (p) {
-          const pos = physics.getPose(p.body!).position;
-          hud.textContent =
-            `fps: ${fps}\npos: ${pos[0].toFixed(2)}, ${pos[1].toFixed(2)}, ${pos[2].toFixed(2)}\n` +
-            `grounded: ${p.grounded}`;
-        } else {
-          hud.textContent = `fps: ${fps}`;
-        }
-      }
-      requestAnimationFrame(tick);
-    };
+    }
     requestAnimationFrame(tick);
-  }
+  };
+  requestAnimationFrame(tick);
 }
 
 void main();

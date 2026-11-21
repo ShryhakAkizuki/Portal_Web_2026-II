@@ -66,7 +66,7 @@ describe('PortalSystem: cruce de cuerpos dinámicos (T27)', () => {
   };
 
   const launchCube = (position: Vec3, velocity: Vec3): Prop => {
-    const cube = new Prop(deps, 'cubo-1', position);
+    const cube = new Prop(deps, bus, 'cubo-1', position);
     pw.setVelocity(cube.body!, velocity);
     pw.setGravityScale(cube.body!, 0);
     pw.step(DT);
