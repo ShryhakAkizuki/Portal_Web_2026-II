@@ -1,5 +1,6 @@
 import { PORTAL_WIDTH, PORTAL_HEIGHT, PORTAL_OFFSET } from '../config';
 import { HostWalls } from './HostWalls';
+import { PortalClones } from './PortalClones';
 import { PortalVisual } from './PortalVisual';
 import { PortalViews } from './portalViews';
 import { axisOfNormal, snapUp, fitPortalOnFace, rectsOverlap, portalRect } from '../math/faceMath';
@@ -53,18 +54,22 @@ function cross(a: Vec3, b: Vec3): Vec3 {
 export class PortalSystem implements IPortalSystem {
   private readonly physics: IPhysicsWorld;
   private readonly bus: IEventBus;
+  private readonly renderer: IRenderer;
   private readonly visual: PortalVisual;
   private readonly views: PortalViews;
   private readonly hostWalls: HostWalls;
+  private readonly clones: PortalClones;
   private readonly portals = new Map<PortalColor, PortalState>();
   private readonly tracked = new Map<Entity, Vec3>();
 
   constructor(deps: PortalSystemDeps) {
     this.physics = deps.physics;
     this.bus = deps.bus;
+    this.renderer = deps.renderer;
     this.visual = new PortalVisual(deps.renderer.scene);
     this.views = new PortalViews(deps.renderer, this.visual);
     this.hostWalls = new HostWalls(deps.physics);
+    this.clones = new PortalClones();
   }
 
   place(color: PortalColor, hit: RayHit, viewDir: Vec3): boolean {
@@ -120,6 +125,7 @@ export class PortalSystem implements IPortalSystem {
 
   untrack(e: Entity): void {
     this.tracked.delete(e);
+    this.clones.update([], this.portals, this.renderer);
   }
 
   update(_dt: number): void {
@@ -182,11 +188,13 @@ export class PortalSystem implements IPortalSystem {
     const orange = this.frameOf('orange');
     const blueOut = this.frameOfFrame('blue');
     const orangeOut = this.frameOfFrame('orange');
+    this.clones.update([...this.tracked.keys()], this.portals, renderer);
     this.views.render(camera, blue, orange, orangeOut, blueOut);
   }
 
   dispose(): void {
     this.hostWalls.dispose();
+    this.clones.dispose(this.renderer);
     this.views.dispose();
     this.visual.dispose();
     this.portals.clear();
