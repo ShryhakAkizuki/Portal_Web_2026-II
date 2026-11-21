@@ -1,7 +1,9 @@
 import { BaseEntity } from '../gameplay/Entity';
+import { Button } from '../gameplay/Button';
+import { Door } from '../gameplay/Door';
 import { Prop } from '../gameplay/Prop';
 import { registerBuilder } from './entityFactory';
-import type { CubeDef, ExitDef, LevelDeps } from '../types/contracts';
+import type { ExitDef, LevelDeps } from '../types/contracts';
 
 export class ExitPlaceholder extends BaseEntity {
   constructor(id: string, def: ExitDef, deps: LevelDeps) {
@@ -39,5 +41,19 @@ export function registerAll(): void {
       throw new Error(`Builder de "cube" recibió def de tipo "${def.type}"`);
     }
     return new Prop(deps, deps.bus, def.id, def.position);
+  });
+
+  registerBuilder('button', (def, deps) => {
+    if (def.type !== 'button') {
+      throw new Error(`Builder de "button" recibió def de tipo "${def.type}"`);
+    }
+    return new Button(deps, def);
+  });
+
+  registerBuilder('door', (def, deps) => {
+    if (def.type !== 'door') {
+      throw new Error(`Builder de "door" recibió def de tipo "${def.type}"`);
+    }
+    return new Door(def, deps);
   });
 }

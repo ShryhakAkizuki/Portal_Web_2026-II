@@ -5,6 +5,8 @@ import { Renderer } from './systems/Renderer';
 import { PhysicsWorld } from './systems/PhysicsWorld';
 import { InputManager } from './systems/InputManager';
 import { PortalSystem } from './systems/PortalSystem';
+import { Button } from './gameplay/Button';
+import { Door } from './gameplay/Door';
 import { PortalGun } from './gameplay/PortalGun';
 import { Prop } from './gameplay/Prop';
 import { PropHolder } from './gameplay/PropHolder';
@@ -65,6 +67,25 @@ async function main(): Promise<void> {
     const testCube = new Prop({ physics, renderer }, bus, 'test-cube', [0, 1.5, 2]);
     physics.setVelocity(testCube.body!, [0, 0, -4]);
     level.add(testCube);
+
+    const testButton = new Button({ physics, renderer, bus }, {
+      type: 'button',
+      id: 'test-button',
+      position: [1.5, 0.05, 0],
+    });
+    level.add(testButton);
+    const testDoor = new Door(
+      {
+        type: 'door',
+        id: 'test-door',
+        position: [4, 1.5, 0],
+        size: [2, 3, 0.5],
+        opensOn: ['test-button'],
+        mode: 'any',
+      },
+      { physics, renderer, bus },
+    );
+    level.add(testDoor);
     window.addEventListener('keydown', (ev) => {
       if (ev.key !== 'r' && ev.key !== 'R') {
         return;

@@ -210,8 +210,29 @@ export class PhysicsWorld implements IPhysicsWorld {
     };
   }
 
-  queryOverlaps(_sensor: PhysicsBody): PhysicsBody[] {
-    throw new Error('not implemented: T31');
+  queryOverlaps(sensor: PhysicsBody): PhysicsBody[] {
+    const t = sensor.rb.translation();
+    const seen = new Set<number>();
+    const out: PhysicsBody[] = [];
+    this.world.intersectionsWithShape(
+      { x: t.x, y: t.y, z: t.z },
+      sensor.rb.rotation(),
+      sensor.collider.shape,
+      (collider) => {
+        const body = this.byCollider.get(collider.handle);
+        if (!body || body.rb === sensor.rb) {
+          return true;
+        }
+        if (!seen.has(body.rb.handle)) {
+          seen.add(body.rb.handle);
+          out.push(body);
+        }
+        return true;
+      },
+      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,
+      interactionGroups(ALL_GROUPS, ALL_GROUPS),
+    );
+    return out;
   }
 
   setBodyEnabled(body: PhysicsBody, enabled: boolean): void {
