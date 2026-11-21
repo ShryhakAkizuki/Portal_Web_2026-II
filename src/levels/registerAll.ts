@@ -1,25 +1,9 @@
-import { BaseEntity } from '../gameplay/Entity';
 import { Button } from '../gameplay/Button';
 import { Door } from '../gameplay/Door';
+import { ExitZone } from '../gameplay/ExitZone';
 import { Prop } from '../gameplay/Prop';
 import { registerBuilder } from './entityFactory';
-import type { ExitDef, LevelDeps } from '../types/contracts';
-
-export class ExitPlaceholder extends BaseEntity {
-  constructor(id: string, def: ExitDef, deps: LevelDeps) {
-    super(id, 'exit', deps);
-    this.body = deps.physics.createBody({
-      type: 'fixed',
-      position: def.position,
-      shape: {
-        kind: 'box',
-        halfExtents: [def.size[0] / 2, def.size[1] / 2, def.size[2] / 2],
-      },
-      sensor: true,
-      userData: { entityId: id, kind: 'sensor' },
-    });
-  }
-}
+import type { LevelDeps } from '../types/contracts';
 
 let registered = false;
 
@@ -29,11 +13,11 @@ export function registerAll(): void {
   }
   registered = true;
 
-  registerBuilder('exit', (def, deps) => {
+  registerBuilder('exit', (def, deps, ctx) => {
     if (def.type !== 'exit') {
       throw new Error(`Builder de "exit" recibió def de tipo "${def.type}"`);
     }
-    return new ExitPlaceholder(def.id, def, deps);
+    return new ExitZone(def, deps, ctx.levelId);
   });
 
   registerBuilder('cube', (def, deps) => {
