@@ -135,7 +135,7 @@ describe('PortalGun (T21)', () => {
       userData: { kind: 'world', portalable: true, surfaceId: 'muro' },
     });
     pw.step(1 / 60);
-    gun = new PortalGun({ physics: pw, input, portals: ps, player });
+    gun = new PortalGun({ physics: pw, input, portals: ps, player, renderer: new FakeRenderer() });
   });
 
   it('clic izquierdo con puntero bloqueado coloca blue en el muro frente al jugador', () => {
@@ -173,7 +173,7 @@ describe('PortalGun (T21)', () => {
 
   it('sin impacto (cielo) no llama a place', () => {
     const fake = new FakePortals();
-    const g = new PortalGun({ physics: pw, input, portals: fake, player });
+    const g = new PortalGun({ physics: pw, input, portals: fake, player, renderer: new FakeRenderer() });
     input.lockPointer();
     player.dir = [0, 1, 0];
     input.pressed.push('firePrimary');

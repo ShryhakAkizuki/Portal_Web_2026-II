@@ -1,0 +1,28 @@
+Pack downloaded from Freesound
+----------------------------------------
+
+"sci-fi automatic door"
+
+This Pack of sounds contains sounds by the following user:
+ - saangosu ( https://freesound.org/people/saangosu/ )
+
+You can find this pack online at: https://freesound.org/people/saangosu/packs/42520/
+
+
+Licenses in this Pack (see below for individual sound licenses)
+---------------------------------------------------------------
+
+Creative Commons 0: http://creativecommons.org/publicdomain/zero/1.0/
+
+
+Sounds in this Pack
+-------------------
+
+  * 781083__saangosu__automatic-door-open.wav.wav
+    * url: https://freesound.org/s/781083/
+    * license: Creative Commons 0
+  * 781082__saangosu__automatic-door-close.wav.wav
+    * url: https://freesound.org/s/781082/
+    * license: Creative Commons 0
+
+

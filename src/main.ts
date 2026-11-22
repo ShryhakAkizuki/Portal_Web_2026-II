@@ -5,9 +5,11 @@ import { Renderer } from './systems/Renderer';
 import { PhysicsWorld } from './systems/PhysicsWorld';
 import { InputManager } from './systems/InputManager';
 import { PortalSystem } from './systems/PortalSystem';
+import { AudioSystem } from './systems/AudioSystem';
 import { Button } from './gameplay/Button';
 import { Door } from './gameplay/Door';
 import { PortalGun } from './gameplay/PortalGun';
+import { FootstepController } from './gameplay/FootstepController';
 import { Prop } from './gameplay/Prop';
 import { PropHolder } from './gameplay/PropHolder';
 import { Level } from './levels/Level';
@@ -31,13 +33,17 @@ async function main(): Promise<void> {
 
   registerAll();
   const portals = new PortalSystem({ physics, bus, renderer });
+  const audio = new AudioSystem(bus);
+  // La carga de audio no bloquea el arranque; si falla, el juego sigue sin sonido.
+  void audio.load().catch((err) => console.warn('Audio no disponible:', err));
   const level = new Level({ physics, renderer, bus, input, portals }, LEVEL_DATA);
 
   await scenes.change(level);
 
   const player = level.getEntity('player') as IPlayer | undefined;
   if (player) {
-    level.addController(new PortalGun({ physics, input, portals, player }));
+    level.addController(new PortalGun({ physics, input, portals, player, renderer, bus }));
+    level.addController(new FootstepController({ player, audio }));
     level.addController(
       new PropHolder({
         physics,
@@ -55,7 +61,10 @@ async function main(): Promise<void> {
   });
   game.start();
 
-  canvas.addEventListener('click', () => input.lockPointer());
+  canvas.addEventListener('click', () => {
+    input.lockPointer();
+    audio.unlock(); // reanuda el AudioContext con el gesto del usuario
+  });
 
   function resize(): void {
     renderer.resize(window.innerWidth, window.innerHeight);
