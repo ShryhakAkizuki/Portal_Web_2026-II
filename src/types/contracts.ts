@@ -7,6 +7,7 @@ export type PortalColor = 'blue' | 'orange';
 
 // ---------- Eventos ----------
 export type GameEvents = {
+  'gun:fired':       { color: PortalColor; placed: boolean };
   'portal:placed':   { color: PortalColor };
   'portal:crossed':  { entityId: string; entering: PortalColor };
   'button:pressed':  { id: string };
@@ -14,6 +15,7 @@ export type GameEvents = {
   'door:changed':    { id: string; open: boolean };
   'prop:grabbed':    { id: string };
   'prop:released':   { id: string };
+  'prop:impact':     { id: string; strength: number };
   'level:completed': { levelId: string };
 };
 export interface IEventBus<E extends Record<string, unknown> = GameEvents> {
