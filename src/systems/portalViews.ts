@@ -7,7 +7,14 @@ import {
   Vector3,
   WebGLRenderTarget,
 } from 'three';
-import { PORTAL_HEIGHT, PORTAL_OFFSET, PORTAL_RECURSION, PORTAL_WIDTH } from '../config';
+import {
+  LAYER_AVATAR,
+  LAYER_VIEWMODEL,
+  PORTAL_HEIGHT,
+  PORTAL_OFFSET,
+  PORTAL_RECURSION,
+  PORTAL_WIDTH,
+} from '../config';
 import { obliqueNearProjection, portalTransform } from '../math/portalMath';
 import type { PortalFrame } from '../math/portalMath';
 import type { IRenderer, PortalColor } from '../types/contracts';
@@ -198,6 +205,11 @@ export class PortalViews {
     const cam = new PerspectiveCamera();
     cam.matrixAutoUpdate = false;
     cam.matrixWorldAutoUpdate = false;
+    // La vista del portal ve la escena (capa 0) + el avatar del jugador (para
+    // que te veas a ti mismo al mirar por el portal), pero NO el viewmodel de
+    // la pistola (no quieres ver tu arma flotando dentro del portal).
+    cam.layers.enable(LAYER_AVATAR);
+    cam.layers.disable(LAYER_VIEWMODEL);
     this.cameras.set(color, cam);
     return cam;
   }

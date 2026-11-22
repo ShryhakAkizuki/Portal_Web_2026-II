@@ -37,7 +37,7 @@ async function main(): Promise<void> {
 
   const player = level.getEntity('player') as IPlayer | undefined;
   if (player) {
-    level.addController(new PortalGun({ physics, input, portals, player }));
+    level.addController(new PortalGun({ physics, input, portals, player, renderer }));
     level.addController(
       new PropHolder({
         physics,

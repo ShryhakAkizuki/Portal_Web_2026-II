@@ -2,6 +2,7 @@ import { PLAYER } from '../config';
 import { Vector3 } from 'three';
 import type { Matrix4 } from 'three';
 import { BaseEntity, type EntityDeps } from './Entity';
+import { createPlayerAvatar } from './models/playerModel';
 import { transformDirection, yawPitchFromDirection } from '../math/portalMath';
 import { fromV3, toV3 } from '../math/vec';
 import type { IInput, IPlayer, Vec3 } from '../types/contracts';
@@ -38,6 +39,9 @@ export class Player extends BaseEntity implements IPlayer {
       shape: { kind: 'capsule', halfHeight: PLAYER.halfHeight, radius: PLAYER.radius },
       userData: { entityId: 'player', kind: 'player' },
     });
+
+    // Avatar placeholder (solo visible a través de los portales, capa AVATAR).
+    this.attachMesh(createPlayerAvatar());
   }
 
   preStep(dt: number): void {
@@ -127,5 +131,12 @@ export class Player extends BaseEntity implements IPlayer {
     );
     this.deps.renderer.camera.position.y += PLAYER.eyeOffset;
     this.deps.renderer.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+
+    // El avatar (visible solo en los portales) sigue al cuerpo interpolado y
+    // rota solo en yaw: el cuerpo no se inclina al mirar arriba/abajo.
+    if (this.mesh) {
+      this.mesh.position.lerpVectors(this.prevPosition, curr, alpha);
+      this.mesh.rotation.set(0, this.yaw, 0, 'YXZ');
+    }
   }
 }

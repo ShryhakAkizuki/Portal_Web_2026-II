@@ -8,6 +8,7 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
 } from 'three';
+import { LAYER_AVATAR, LAYER_VIEWMODEL } from '../config';
 import type { IRenderer } from '../types/contracts';
 
 export function clampPixelRatio(dpr: number, max = 2): number {
@@ -37,6 +38,15 @@ export class Renderer implements IRenderer {
     const aspect = canvas.width / canvas.height || 1;
     this.camera = new PerspectiveCamera(75, aspect, 0.05, 200);
     this.camera.rotation.order = 'YXZ';
+    // La cámara principal ve la escena (capa 0) + el viewmodel (pistola en
+    // primera persona), pero NO el avatar del jugador (estás en primera persona).
+    this.camera.layers.enable(LAYER_VIEWMODEL);
+    this.camera.layers.disable(LAYER_AVATAR);
+
+    // La cámara se añade a la escena para que sus hijos (el viewmodel de la
+    // pistola) se recorran al renderizar: WebGLRenderer.render(scene, camera)
+    // solo dibuja lo que cuelga de `scene`, no de la cámara por sí sola.
+    this.scene.add(this.camera);
   }
 
   resize(width: number, height: number): void {
